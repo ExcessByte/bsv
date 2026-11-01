@@ -1,1 +1,1 @@
-[] Simple "Hello World"
+[Ok] Simple "Hello World"
