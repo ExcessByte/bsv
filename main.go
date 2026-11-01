@@ -261,6 +261,22 @@ func NewJobManager(logDir string) *JobManager {
 	}
 }
 
+func lookPath(name string) (string, error) {
+	if strings.Contains(name, "/") {
+		return name, nil
+	}
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if dir == "" {
+			continue
+		}
+		p := filepath.Join(dir, name)
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("%q not found in PATH", name)
+}
+
 func openLog(dir, name string) (*os.File, error) {
 	path := filepath.Join(dir, name+".log")
 	if fi, err := os.Stat(path); err == nil && fi.Size() > maxLogSize {
@@ -282,7 +298,12 @@ func (jm *JobManager) Start(cfg ServiceConfig) error {
 		return fmt.Errorf("open log file: %w", err)
 	}
 
-	cmd := exec.Command(cfg.Cmd, cfg.Args...)
+	bin, err := lookPath(cfg.Cmd)
+	if err != nil {
+		logFile.Close()
+		return err
+	}
+	cmd := &exec.Cmd{Path: bin, Args: append([]string{cfg.Cmd}, cfg.Args...)}
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
