@@ -21,3 +21,5 @@ else run,
 go build .
 install -m755 bsv $PREFIX/bin/
 ```
+
+I will update the example config file soon
